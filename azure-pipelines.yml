@@ -1,0 +1,58 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: ACR-Auth
+  - group: AD-OAuth2
+
+steps:
+- task: Npm@1
+  inputs:
+    command: 'install'
+    workingDir: 'tasks-front'
+
+- task: Npm@1
+  inputs:
+    command: 'custom'
+    workingDir: 'tasks-front'
+    customCommand: 'run build'
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'tasks-back/pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.11'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    goals: 'package'
+
+- task: Docker@2
+  inputs:
+    containerRegistry: 'acr-tasks'
+    repository: 'tasks'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile'
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: $(AZURE_SUBSCRIPTION)
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --resource-group $RES_GROUP --query "loginServer" --output tsv)
+      az container create \
+      --name tasks \
+      --resource-group $RES_GROUP \
+      --image $ACR_LOGIN_SERVER/tasks:$(Build.BuildId) \
+      --registry-login-server $ACR_LOGIN_SERVER \
+      --registry-username $(acr-user) \
+      --registry-password $(acr-password) \
+      --dns-name-label $ACI_DNS_LABEL \
+      --ports 8080 \
+      --environment-variables 'AZURE_ACTIVEDIRECTORY_TENANT_ID'=$(ad-tenant-id) \
+      'SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_AZURE_CLIENT_ID'=$(ad-oauth2-client-id) \
+      'SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_AZURE_CLIENT_SECRET'=$(ad-oauth2-client-secret) \
+      --query ipAddress.fqdn

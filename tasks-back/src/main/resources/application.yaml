@@ -14,20 +14,7 @@ spring:
     database: H2
     hibernate.ddl-auto: update
 
-  security:
-    oauth2:
-      client:
-        registration:
-          azure:
-            # Specifies your App Registration's Application ID:
-            client-id: "xxx"
-            # Specifies your App Registration's secret key:
-            client-secret: "xxx"
-
-# OAuth2設定
-azure:
-  activedirectory:
-    # Specifies your Active Directory ID:
-    tenant-id: "xxx"
-    # Specifies the list of Active Directory groups to use for authorization:
-    active-directory-groups: Users
+azure.activedirectory.tenant-id: "xxx"
+spring.security.oauth2.client.registration.azure.client-id: "xxx"
+spring.security.oauth2.client.registration.azure.client-secret: "xxx"
+azure.activedirectory.active-directory-groups: Users
